@@ -1,8 +1,10 @@
+import json_logging
 import json
 import traceback
 from datetime import datetime
 import copy
 import sys
+import os
 import logging
 
 import json_logging as jl
@@ -80,7 +82,7 @@ class FlaskLogger(Logger):
     Logger for flask web applications.
     """
 
-    def __init__(self, app, name: str, level: str):
+    def __init__(self, app, name: str, level: str, suppress_app_logs: bool):
         """
         Initialize a new flask logger.
 
@@ -95,11 +97,16 @@ class FlaskLogger(Logger):
         jl.init_flask(custom_formatter=Format)
         jl.init_request_instrument(app)
 
+        if suppress_app_logs:
+            logging.getLogger("flask-request-logger").disabled = True
+            app.logger.disabled = True
+            logging.getLogger('werkzeug').disabled = True
+            os.environ['WERKZEUG_RUN_MAIN'] = 'true'
+
         self.name = name
         self.lg = BaseLogger(name)
         self.lg.setLevel(Logger.levels[level])
         self.lg.addHandler(logging.StreamHandler(sys.stdout))
-
 
 #####################################
 # HELPER IMPLEMENTATIONS BELOW HERE #
@@ -125,12 +132,13 @@ class Format(logging.Formatter):
             "level": record.levelname,
             "message": record.getMessage(),
             'logger_name': record.name,
-            'filename': record.filename,
-            'lineno': record.lineno,
         }
 
-        for key in record.__dict__["extra"].keys():
-            json_log_object[key] = record.__dict__["extra"][key]
+        if record.__dict__["extra"]:
+            for key in record.__dict__["extra"].keys():
+                json_log_object[key] = record.__dict__["extra"][key]
+        else:
+            return json.dumps({json_log_object})
 
         if hasattr(record, 'props'):
             json_log_object['data'].update(record.props)
