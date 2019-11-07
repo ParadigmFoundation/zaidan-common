@@ -37,13 +37,14 @@ class DealerDatabase():
         '''
 
         cursor = self.db.cursor()
-        qs = ("INSERT INTO `exchange_order_history (`order_id`, `exchange`, `pair`, `side`, `size`, `price`, `time_placed`)"
+        qs = ("INSERT INTO `exchange_order_history` (`order_id`, `exchange`, `pair`, `side`, `size`, `price`, `time_placed`) "
               "VALUES (%s, %s, %s, %s, %s, %s, %s)")
 
         try:
             cursor.execute(
                 qs, (order_id, exchange, symbol, side, qty, price, ts))
             cursor.close()
+            self.db.commit()
         except Exception as error:
             raise DealerDatabaseError(
                 'failed to add exchange order', error.args)
@@ -64,13 +65,14 @@ class DealerDatabase():
         '''
 
         cursor = self.db.cursor()
-        qs = ("INSERT INTO `zero_ex_order_history` (`quote_id`, `side`, `pair`, `size`, `price`, `expiration`, `fee`, `status`, `transaction_id`) "
+        qs = ("INSERT INTO `zero_ex_order_history` ( `quote_id`, `side`, `pair`, `size`, `price`, `expiration`, `fee`, `status`, `transaction_id` ) "
               "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)")
 
         try:
             cursor.execute(qs, (quote_id, side, pair, size,
                                 price, expiration, fee, status, tx_id))
             cursor.close()
+            self.db.commit()
         except Exception as error:
             raise DealerDatabaseError('failed to add 0x order', error.args)
 
@@ -91,5 +93,6 @@ class DealerDatabase():
             cursor.execute(exchange_order_table_query)
             cursor.execute(zrx_order_table_query)
             cursor.close()
+            self.db.commit()
         except Exception as error:
             raise DealerDatabaseError('failed to create tables', error.args)
