@@ -22,7 +22,7 @@ class Logger():
         "error": logging.ERROR
     }
 
-    def __init__(self, name: str, level: str):
+    def __init__(self, name="logger", level="info"):
         """
         Create a new logger.
 
@@ -40,7 +40,7 @@ class Logger():
         self.lg.setLevel(Logger.levels[level])
         self.lg.addHandler(logging.StreamHandler(sys.stdout))
 
-    def debug(self, message: str, fields: object):
+    def debug(self, message: str, fields={}):
         """
         Print a debug log.
 
@@ -49,7 +49,7 @@ class Logger():
         """
         self.lg.debug(message, extra=fields)
 
-    def info(self, message: str, fields: object):
+    def info(self, message: str, fields={}):
         """
         Print an info log.
 
@@ -58,7 +58,7 @@ class Logger():
         """
         self.lg.info(message, extra=fields)
 
-    def warn(self, message: str, fields: object):
+    def warn(self, message: str, fields={}):
         """
         Print a warning log.
 
@@ -67,7 +67,7 @@ class Logger():
         """
         self.lg.warn(message, extra=fields)
 
-    def error(self, message: str, fields: object):
+    def error(self, message: str, fields={}):
         """
         Print an error log.
 
@@ -82,7 +82,7 @@ class FlaskLogger(Logger):
     Logger for flask web applications.
     """
 
-    def __init__(self, app, name: str, level: str, suppress_app_logs: bool):
+    def __init__(self, app, name="flask-logger", level="info", suppress_app_logs=True):
         """
         Initialize a new flask logger.
 
@@ -134,7 +134,7 @@ class Format(logging.Formatter):
             'logger_name': record.name,
         }
 
-        if record.__dict__["extra"]:
+        if "extra" in record.__dict__:
             for key in record.__dict__["extra"].keys():
                 json_log_object[key] = record.__dict__["extra"][key]
         else:
@@ -158,11 +158,16 @@ class BaseLogger(logging.Logger):
         """
         rv = logging.LogRecord(name, level, fn, lno, msg, args, exc_info, func,
                                sinfo)
-        if extra is not None:
-            rv.__dict__["extra"] = {}
-            for key in extra:
-                if (key in ["message", "asctime"]) or (key in rv.__dict__):
-                    raise KeyError(
-                        "Attempt to overwrite %r in LogRecord" % key)
-                rv.__dict__["extra"][key] = extra[key]
+
+        try:
+            if extra is not None:
+                rv.__dict__["extra"] = {}
+                for key in extra:
+                    if (key in ["message", "asctime"]) or (key in rv.__dict__):
+                        raise KeyError(
+                            "Attempt to overwrite %r in LogRecord" % key)
+                    rv.__dict__["extra"][key] = extra[key]
+        except:
+            pass
+
         return rv

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='zaidan',
-    version='0.0.11',
+    version='0.0.13',
     author="Henry Harder",
     author_email="henry@paradigm.market",
     description="Common utilities for the Zaidan system.",
@@ -15,7 +15,10 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     license="MIT",
     install_requires=[
-        "json-logging"
+        "json-logging",
+        "redis",
+        "mysql.connector",
+        "requests"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
