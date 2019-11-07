@@ -64,7 +64,7 @@ class DealerDatabase():
         '''
 
         cursor = self.db.cursor()
-        qs = ("INSERT INTO `zero_ex_order_history` (`quote_id`, `side`, `pair`, `size`, `price`, `expiration`, `fee`, `status`, `transaction_id`)"
+        qs = ("INSERT INTO `zero_ex_order_history` (`quote_id`, `side`, `pair`, `size`, `price`, `expiration`, `fee`, `status`, `transaction_id`) "
               "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)")
 
         try:
