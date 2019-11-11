@@ -184,6 +184,26 @@ class DealerCache():
         :param quote_id: The quote ID generated on initial request.
         '''
 
+        return self.get_order_mark(quote_id)['quote']
+
+    def get_quote_status(self, quote_id: str) -> int:
+        '''
+        Fetch a quote's status by it's UUID.
+
+        :param quote_id: The quote UUID.
+        '''
+
+        return self.get_order_mark(quote_id)['status']
+
+    def get_order_mark(self, quote_id: str) -> int:
+        '''
+        Get full order market (with status and quote).
+
+        Raises a NotFoundError if the quote doesn't exist.
+
+        :param quote_id: The quote UUID.
+        '''
+
         if not is_valid_uuid(quote_id):
             raise ValueError("invalid quote ID", quote_id)
 
@@ -191,8 +211,7 @@ class DealerCache():
             raise NotFoundError("quote not found", quote_id)
 
         raw_order_mark = self.db.hget(self.order_marks_key, quote_id)
-        order_mark = decode_from_bytes(raw_order_mark)
-        return order_mark['quote']
+        return decode_from_bytes(raw_order_mark)
 
     def get_all_order_marks(self, only_valid=True) -> dict:
         '''
