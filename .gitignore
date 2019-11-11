@@ -2,6 +2,7 @@ build/
 dist/
 env/
 
+.eggs
 .vscode
 __pycache__
 
