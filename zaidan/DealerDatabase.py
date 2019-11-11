@@ -86,12 +86,12 @@ class DealerDatabase():
 
         try:
             connection = self._get_connection()
-            cursor = self._get_cursor(connetion)
+            cursor = self._get_cursor(connection)
             self._execute_query(cursor, exchange_order_table_query)
             self._execute_query(cursor, zrx_order_table_query)
-            self._commit()
+            self._commit(connection)
             self._close_cursor(cursor)
-            self._give_connection()
+            self._give_connection(connection)
         except Exception as error:
             raise DealerDatabaseError('failed to create tables', error.args)
 
@@ -102,11 +102,11 @@ class DealerDatabase():
         :param query: The valid SQL query string.
         '''
         connection = self._get_connection()
-        cursor = self._get_cursor(connetion)
+        cursor = self._get_cursor(connection)
         self._execute_query(cursor, query, args)
         self._commit(connection)
-        self._close_cursor()
-        self._give_connection()
+        self._close_cursor(cursor)
+        self._give_connection(connection)
 
     def _get_connection(self) -> PooledMySQLConnection:
         return self.connection_pool.get_connection()
