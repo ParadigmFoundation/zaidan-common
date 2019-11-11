@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='zaidan',
-    version='0.0.21',
+    version='0.0.22',
     author="Henry Harder",
     author_email="henry@paradigm.market",
     description="Common utilities for the Zaidan system.",
