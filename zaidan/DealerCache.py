@@ -31,7 +31,7 @@ class DealerCache():
     # redis key for per-symbol un-hedged positions hash table
     unhedged_position_key = "UNHEDGED_POSITION"
 
-    def __init__(self, host: str, port=6379, password=None):
+    def __init__(self, host='::', port=6379, password=None):
         '''
         Create a new DealerCache instance.
 
@@ -51,7 +51,7 @@ class DealerCache():
         '''
 
         size_val = str(size)
-        self.db.hset(self.unhedged_positions_key, symbol.upper(), size_val)
+        self.db.hset(self.unhedged_position_key, symbol.upper(), size_val)
 
     def get_unhedged_position(self, symbol: str) -> float:
         '''
@@ -64,8 +64,36 @@ class DealerCache():
         if not self.db.hexists(self.unhedged_position_key, symbol.upper()):
             return 0.0
 
-        str_val = self.db.hget(self.unhedged_position_key, symbol)
+        str_val = self.db.hget(self.unhedged_position_key, symbol.upper())
         return float(str_val)
+
+    def set_order_book(self, exchange: str, symbol: str, side: str, levels: list) -> None:
+        '''
+        Encode, compress, and set an order book.
+
+        Will also update the coresponding timestamp key for the book.
+
+        :param exchange: The name of the exchange to set the book for.
+        :param symbol: The currency pair of the book.
+        :param side: The side of the market book represents (bid or ask).
+        :param levels: The nested list of price levels ([[price_level, qty],]).
+        '''
+
+        updated_timestamp = time()
+
+        if side not in ('bid', 'ask'):
+            raise ValueError('side must be "bid" or "ask"')
+
+        symbols = symbol.split('/')
+        if len(symbols) != 2:
+            raise ValueError('symbol must be BASE_TICKER/QUOTE_TICKER format')
+
+        base_key = f'{symbol.upper()}_{exchange.lower()}_{side}'
+        timestamp_key = f'{base_key}_timestamp'
+
+        compressed_book = encode_to_bytes(levels)
+        self.db.set(base_key, compressed_book)
+        self.db.set(timestamp_key, str(updated_timestamp))
 
     def get_order_book(self, exchange: str, symbol: str, side: str, max_age=20) -> list:
         '''
@@ -98,7 +126,7 @@ class DealerCache():
         raw_book = self.db.get(base_key)
         return decode_from_bytes(raw_book)
 
-    def set_quote(self, quote_id: str, order_mark: object, status=0) -> None:
+    def set_quote(self, quote_id: str, quote: object, status=0) -> None:
         '''
         Store an order mark object by its quote UUID.
 
@@ -114,7 +142,10 @@ class DealerCache():
         :param status: The new status of the quote.
         '''
 
-        data = {'status': status, 'quote': order_mark}
+        if not is_valid_uuid(quote_id):
+            raise ValueError("invalid quote ID", quote_id)
+
+        order_mark = {'status': status, 'quote': quote}
 
         mark_compressed = encode_to_bytes(order_mark)
         self.db.hset(self.order_marks_key, quote_id, mark_compressed)
@@ -126,6 +157,9 @@ class DealerCache():
         :param quote_id: The ID of the quote to update.
         :param new_status: The new status code of the quote.
         '''
+
+        if not is_valid_uuid(quote_id):
+            raise ValueError("invalid quote ID", quote_id)
 
         if not self.db.hexists(self.order_marks_key, quote_id):
             raise NotFoundError('quote with specified ID not found')
@@ -151,12 +185,12 @@ class DealerCache():
         '''
 
         if not is_valid_uuid(quote_id):
-            raise DealerCacheError("invalid quote ID")
+            raise ValueError("invalid quote ID", quote_id)
 
-        raw_order_mark = self.db.hget(self.order_marks_key, quote_id)
-        if not raw_order_mark:
+        if not self.db.hexists(self.order_marks_key, quote_id):
             raise NotFoundError("quote not found", quote_id)
 
+        raw_order_mark = self.db.hget(self.order_marks_key, quote_id)
         order_mark = decode_from_bytes(raw_order_mark)
         return order_mark['quote']
 
@@ -169,17 +203,21 @@ class DealerCache():
 
         call_time = time()
 
-        marks = {}
+        order_marks = {}
         raw_marks = self.db.hgetall(self.order_marks_key)
+
+        # iterate over encoded/compressed order_marks and decode
         for mark_id in raw_marks.keys():
             decoded_mark = decode_from_bytes(raw_marks[mark_id])
 
-            if only_valid and int(time) >= int(decoded_mark['quote']['expiration']):
+            # when only_valid is set, only return un-expired quotes
+            quote_expiration = int(decoded_mark['quote']['expiration'])
+            if only_valid and call_time >= quote_expiration:
                 continue
 
-            quotes[mark_id] = decoded_mark
+            order_marks[mark_id.decode('utf-8')] = decoded_mark
 
-        return quotes
+        return order_marks
 
     def remove_order_mark(self, quote_id: str) -> None:
         '''
@@ -195,4 +233,4 @@ class DealerCache():
         Fetch an array of all quote ID's in the cache.
         '''
 
-        return self.db.hkeys(self.order_marks_key)
+        return [mark_id.decode() for mark_id in self.db.hkeys(self.order_marks_key)]
